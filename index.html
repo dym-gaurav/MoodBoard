@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mood Board - Supabase + PythonAnywhere</title>
+<title>Mood Board </title>
 <style>
   :root{
     --bg: #0e0e10;
@@ -490,7 +490,7 @@ async function loadReelsFromSupabase(){
 
   setStatus("Loading reels...");
   try{
-    // Load reels
+    // Load reels from reels table
     const { data: reelsData, error: reelsError } = await sb
       .from('reels')
       .select('*')
@@ -499,15 +499,23 @@ async function loadReelsFromSupabase(){
     if(reelsError) throw reelsError;
     reels = reelsData || [];
 
-    // Load admin code from admin_config table
+    // ============================================================
+    // LOAD ADMIN CODE FROM admin_config TABLE (NOT FROM reels TABLE)
+    // ============================================================
     const { data: adminData, error: adminError } = await sb
       .from('admin_config')
       .select('admin_code')
       .eq('id', 1)
       .single();
 
-    if(!adminError && adminData) {
-      adminCode = adminData.admin_code;
+    if(adminError) {
+      console.warn("Admin code not found in admin_config table:", adminError.message);
+      adminCode = null;
+    } else if(adminData && adminData.admin_code) {
+      adminCode = adminData.admin_code.toString().trim();
+      console.log("✓ Admin code successfully loaded from admin_config table");
+    } else {
+      adminCode = null;
     }
 
     render();
@@ -818,7 +826,7 @@ adminSubmitBtn.onclick = () => {
   }
   const entered = adminCodeInput.value.trim();
   if(!adminCode){
-    setStatus("No admin code is set in admin_config table.");
+    setStatus("Admin code not configured in admin_config table. Contact admin.");
     closeAdminModal();
     return;
   }
@@ -828,9 +836,9 @@ adminSubmitBtn.onclick = () => {
     adminBtn.textContent = '🔓';
     closeAdminModal();
     render();
-    setStatus("Admin mode activated ✓");
+    setStatus("✓ Admin mode activated");
   } else {
-    setStatus("Incorrect code.");
+    setStatus("❌ Incorrect admin code");
     adminCodeInput.value = "";
   }
 };
@@ -877,7 +885,7 @@ addBtn.onclick = async () => {
     reels.unshift(newReel);
     render();
     closeModal();
-    setStatus(videoData.video_url ? "Reel added with video! ✅" : "Reel added (embed only) ⚠️");
+    setStatus(videoData.video_url ? "✓ Reel added with video!" : "⚠️ Reel added (embed only)");
 
   } catch(err) {
     setStatus("Error: " + err.message);
@@ -921,14 +929,6 @@ if (typeof window.supabase !== 'undefined') {
   script.onerror = () => setStatus("Couldn't load Supabase library (check network).");
   document.head.appendChild(script);
 }
-document.addEventListener("contextmenu", e => e.preventDefault());
-
-document.addEventListener("keydown", e => {
-    if (e.key === "F12") e.preventDefault();
-    if (e.ctrlKey && e.shiftKey && e.key === "I") e.preventDefault();
-    if (e.ctrlKey && e.shiftKey && e.key === "J") e.preventDefault();
-    if (e.ctrlKey && e.key === "U") e.preventDefault();
-});
 </script>
 </body>
 </html>
