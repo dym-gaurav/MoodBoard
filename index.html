@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mood Board - Supabase + PythonAnywhere</title>
+<style>
+  :root{
+    --bg: #0e0e10;
+    --panel: #17171a;
+    --border: #2a2a2e;
+    --text: #eaeaea;
+    --muted: #8a8a8e;
+    --accent: #7c5cff;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .wrap{
+    max-width:1000px;
+    margin:0 auto;
+    padding:24px 16px 100px;
+  }
+  h1{
+    font-size:20px;
+    font-weight:600;
+    margin:0;
+  }
+  .header-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:16px;
+  }
+  .admin-btn{
+    width:36px;
+    height:36px;
+    border-radius:50%;
+    background:var(--panel);
+    border:1px solid var(--border);
+    color:var(--text);
+    font-size:15px;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+  }
+  .admin-btn:hover{border-color:var(--accent);}
+  .admin-btn.active{border-color:var(--accent); color:var(--accent);}
+  .status{
+    font-size:13px;
+    color:var(--muted);
+    margin-bottom:16px;
+    min-height:16px;
+  }
+  .empty{
+    color:var(--muted);
+    font-size:14px;
+    text-align:center;
+    padding:60px 0;
+  }
+
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
+    gap:14px;
+  }
+  .reel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:10px;
+    overflow:hidden;
+    display:flex;
+    flex-direction:column;
+  }
+  .reel-window{
+    aspect-ratio:9/16;
+    background:#0e0e10;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    cursor:pointer;
+    overflow:hidden;
+    position:relative;
+  }
+  .reel-window video{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+  .reel-window img{
+    position:absolute;
+    inset:0;
+    width:100%;
+    height:100%;
+    object-fit:cover;
+  }
+  .reel-window .play-overlay{
+    position:relative;
+    z-index:2;
+    width:48px;
+    height:48px;
+    border-radius:50%;
+    background:rgba(0,0,0,0.55);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:18px;
+    color:white;
+    transition: opacity 0.3s;
+  }
+  .featured-badge{
+    position:absolute;
+    top:8px;
+    left:8px;
+    z-index:3;
+    width:26px;
+    height:26px;
+    border-radius:50%;
+    background:var(--accent);
+    color:white;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:14px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.5);
+  }
+  .featured-checkbox{
+    position:absolute;
+    top:8px;
+    left:8px;
+    z-index:3;
+    width:26px;
+    height:26px;
+    border-radius:50%;
+    background:rgba(14,14,16,0.85);
+    border:1px solid var(--border);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:14px;
+    color:var(--muted);
+    cursor:pointer;
+  }
+  .featured-checkbox.checked{
+    background:var(--accent);
+    color:white;
+    border-color:var(--accent);
+  }
+  .reel-footer{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:10px 12px;
+  }
+  .reel-link{
+    flex:1;
+    min-width:0;
+    font-size:12px;
+    color:var(--muted);
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .upvote{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    background:#0e0e10;
+    border:1px solid var(--border);
+    border-radius:8px;
+    padding:6px 10px;
+    color:var(--text);
+    cursor:pointer;
+    font-size:13px;
+    user-select:none;
+    flex-shrink:0;
+  }
+  .upvote:hover{border-color:var(--accent);}
+  .upvote.voted{
+    color:var(--accent);
+    border-color:var(--accent);
+    cursor:default;
+  }
+  .upvote .arrow{font-size:13px; line-height:1;}
+
+  .fab{
+    position:fixed;
+    bottom:24px;
+    right:24px;
+    width:56px;
+    height:56px;
+    border-radius:50%;
+    background:var(--accent);
+    color:white;
+    border:none;
+    font-size:28px;
+    line-height:1;
+    cursor:pointer;
+    box-shadow:0 4px 14px rgba(0,0,0,0.5);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    z-index:20;
+  }
+  .fab:hover{filter:brightness(1.1);}
+
+  .modal-backdrop{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.6);
+    z-index:30;
+    align-items:center;
+    justify-content:center;
+    padding:16px;
+  }
+  .modal-backdrop.open{display:flex;}
+  .modal{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:12px;
+    padding:20px;
+    width:100%;
+    max-width:400px;
+  }
+  .modal h2{
+    margin:0 0 12px;
+    font-size:16px;
+    font-weight:600;
+  }
+  .modal input{
+    width:100%;
+    padding:12px;
+    background:#0e0e10;
+    border:1px solid var(--border);
+    border-radius:8px;
+    color:var(--text);
+    font-size:14px;
+    margin-bottom:12px;
+  }
+  .modal-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+  }
+  .modal-actions button{
+    padding:10px 16px;
+    border-radius:8px;
+    border:none;
+    font-size:14px;
+    cursor:pointer;
+  }
+  .btn-cancel{background:#0e0e10; color:var(--text); border:1px solid var(--border) !important;}
+  .btn-submit{background:var(--accent); color:white; font-weight:600;}
+  .btn-submit:disabled{opacity:0.5; cursor:default;}
+
+  .video-modal-backdrop{
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.9);
+    z-index:40;
+    align-items:center;
+    justify-content:center;
+    padding:16px;
+  }
+  .video-modal-backdrop.open{display:flex;}
+  .video-modal{
+    position:relative;
+    width:100%;
+    max-width:420px;
+    max-height:90vh;
+    aspect-ratio:9/16;
+    background:#000;
+    border-radius:12px;
+    overflow:hidden;
+  }
+  .video-modal video{
+    position:absolute;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    border:none;
+  }
+  .video-modal-close{
+    position:absolute;
+    top:-42px;
+    right:0;
+    background:none;
+    border:none;
+    color:white;
+    font-size:28px;
+    line-height:1;
+    cursor:pointer;
+    z-index:41;
+    padding:4px 8px;
+  }
+  .loading-spinner{
+    display:inline-block;
+    width:20px;
+    height:20px;
+    border:2px solid rgba(255,255,255,0.3);
+    border-radius:50%;
+    border-top-color:white;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .video-loading{
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:rgba(0,0,0,0.7);
+    z-index:4;
+    flex-direction:column;
+    gap:12px;
+    color:white;
+    font-size:14px;
+  }
+  .video-loading.hidden{display:none;}
+  .error-msg{
+    color:#ff6b6b;
+    font-size:12px;
+    margin-top:4px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header-row">
+    <h1>Mood Board</h1>
+    <button class="admin-btn" id="adminBtn" title="Admin">🔒</button>
+  </div>
+  <div class="status" id="status"></div>
+  <div class="grid" id="list"></div>
+</div>
+
+<button class="fab" id="fabBtn" title="Add a reel">+</button>
+
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <h2>Add a reel</h2>
+    <input id="urlInput" placeholder="Paste Instagram Reel link…">
+    <div id="urlError" class="error-msg"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="cancelBtn">Cancel</button>
+      <button class="btn-submit" id="addBtn">Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="adminModalBackdrop">
+  <div class="modal">
+    <h2 id="adminModalTitle">Enter admin code</h2>
+    <input id="adminCodeInput" placeholder="19-digit code" maxlength="19" inputmode="numeric">
+    <div class="modal-actions">
+      <button class="btn-cancel" id="adminCancelBtn">Cancel</button>
+      <button class="btn-submit" id="adminSubmitBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="video-modal-backdrop" id="videoModalBackdrop">
+  <div class="video-modal">
+    <button class="video-modal-close" id="videoModalClose">✕</button>
+    <div class="video-loading" id="videoLoading">
+      <div class="loading-spinner"></div>
+      <span>Loading video...</span>
+    </div>
+    <video id="videoModalPlayer" controls playsinline></video>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIGURATION
+// ============================================================
+// Your PythonAnywhere backend URL
+const BACKEND_URL = "https://gauravbiswas.pythonanywhere.com"; // CHANGE THIS
+
+// Supabase Configuration
+const SUPABASE_URL = "https://mbniisauzuhpqnuxjivh.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1ibmlpc2F1enVocHFudXhqaXZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODUzNDYyMjQsImV4cCI6MjEwMDkyMjIyNH0._FQbcH2Ivo6N3Y7ngmc2gRSNBsF-232FECET56PPftA";
+const SUPABASE_BUCKET = "reels"; // The bucket name for storing videos
+
+const VOTED_KEY = "mood_board_voted_ids";
+let reels = [];
+let adminCode = null;
+let isAdmin = false;
+let sb = null; // set once the supabase-js client library loads
+// ============================================================
+
+const listEl = document.getElementById('list');
+const statusEl = document.getElementById('status');
+const addBtn = document.getElementById('addBtn');
+const urlInput = document.getElementById('urlInput');
+const urlError = document.getElementById('urlError');
+const fabBtn = document.getElementById('fabBtn');
+const modalBackdrop = document.getElementById('modalBackdrop');
+const cancelBtn = document.getElementById('cancelBtn');
+const adminBtn = document.getElementById('adminBtn');
+const adminModalBackdrop = document.getElementById('adminModalBackdrop');
+const adminCodeInput = document.getElementById('adminCodeInput');
+const adminCancelBtn = document.getElementById('adminCancelBtn');
+const adminSubmitBtn = document.getElementById('adminSubmitBtn');
+const videoModalBackdrop = document.getElementById('videoModalBackdrop');
+const videoModalPlayer = document.getElementById('videoModalPlayer');
+const videoModalClose = document.getElementById('videoModalClose');
+const videoLoading = document.getElementById('videoLoading');
+
+function setStatus(msg){ 
+  if(statusEl) statusEl.textContent = msg || ""; 
+}
+
+function getVotedIds(){
+  try{
+    const raw = localStorage.getItem(VOTED_KEY);
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){ return []; }
+}
+
+function addVotedId(id){
+  try{
+    const ids = getVotedIds();
+    if(!ids.includes(id)){
+      ids.push(id);
+      localStorage.setItem(VOTED_KEY, JSON.stringify(ids));
+    }
+  }catch(e){}
+}
+
+// ============================================================
+// BACKEND COMMUNICATION
+// ============================================================
+
+async function downloadFromBackend(instagramUrl) {
+  try {
+    const response = await fetch(`${BACKEND_URL}/download`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ url: instagramUrl })
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Download failed');
+    }
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error('Backend error:', error);
+    throw error;
+  }
+}
+
+async function getEmbedFromBackend(instagramUrl) {
+  try {
+    const response = await fetch(`${BACKEND_URL}/embed?url=${encodeURIComponent(instagramUrl)}`);
+    if (!response.ok) throw new Error('Embed fetch failed');
+    return await response.json();
+  } catch (error) {
+    console.error('Embed error:', error);
+    return null;
+  }
+}
+
+// ============================================================
+// SUPABASE FUNCTIONS
+// ============================================================
+
+async function loadReelsFromSupabase(){
+  if(!sb){
+    setStatus("Supabase not initialized. Please configure credentials.");
+    return;
+  }
+
+  setStatus("Loading reels...");
+  try{
+    const { data, error } = await sb
+      .from('reels')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if(error) throw error;
+
+    reels = data || [];
+    // Get admin code from first reel that has it set
+    const adminRecord = reels.find(r => r.admin_code);
+    if (adminRecord) {
+      adminCode = adminRecord.admin_code;
+    }
+    render();
+    setStatus("");
+  }catch(err){
+    setStatus("Couldn't load reels: " + err.message);
+    console.error(err);
+  }
+}
+
+async function saveReelToSupabase(reel){
+  if(!sb) throw new Error("Supabase not configured");
+
+  const { data, error } = await sb
+    .from('reels')
+    .insert([{
+      id: reel.id,
+      url: reel.url,
+      upvotes: reel.upvotes || 0,
+      featured: reel.featured || false,
+      video_url: reel.video_url || null,
+      thumbnail_url: reel.thumbnail_url || null,
+      title: reel.title || null,
+      author_name: reel.author_name || null,
+      created_at: new Date().toISOString()
+    }])
+    .select()
+    .single();
+
+  if(error) throw error;
+  return data;
+}
+
+async function updateReelInSupabase(reel){
+  if(!sb) throw new Error("Supabase not configured");
+
+  const { data, error } = await sb
+    .from('reels')
+    .update({
+      upvotes: reel.upvotes,
+      featured: reel.featured
+    })
+    .eq('id', reel.id)
+    .select()
+    .single();
+
+  if(error) throw error;
+  return data;
+}
+
+async function deleteReelFromSupabase(reelId){
+  if(!sb) throw new Error("Supabase not configured");
+
+  const { error } = await sb
+    .from('reels')
+    .delete()
+    .eq('id', reelId);
+
+  if(error) throw error;
+}
+
+// ============================================================
+// UI FUNCTIONS
+// ============================================================
+
+function extractPermalink(raw){
+  try{
+    const u = new URL(raw.trim());
+    let path = u.pathname;
+    if(!path.endsWith('/')) path += '/';
+    return u.origin + path;
+  }catch(e){
+    return null;
+  }
+}
+
+function openReelModal(reel){
+  videoLoading.classList.remove('hidden');
+  videoModalPlayer.style.display = 'none';
+
+  videoModalPlayer.onloadedmetadata = () => {
+    videoLoading.classList.add('hidden');
+    videoModalPlayer.style.display = 'block';
+    videoModalPlayer.play();
+  };
+
+  videoModalPlayer.onerror = () => {
+    // Try fallback to embed
+    videoLoading.classList.add('hidden');
+    videoModalPlayer.style.display = 'block';
+    videoModalPlayer.src = '';
+    // Show embed instead
+    showEmbedFallback(reel.url);
+  };
+
+  if (reel.video_url) {
+    videoModalPlayer.src = reel.video_url;
+  } else {
+    // Try to get video from backend
+    downloadFromBackend(reel.url)
+      .then(data => {
+        if (data.video_url) {
+          videoModalPlayer.src = data.video_url;
+        } else {
+          showEmbedFallback(reel.url);
+        }
+      })
+      .catch(() => {
+        showEmbedFallback(reel.url);
+      });
+  }
+
+  videoModalBackdrop.classList.add('open');
+}
+
+function showEmbedFallback(url) {
+  // For now, just show a message
+  videoLoading.classList.add('hidden');
+  videoModalPlayer.style.display = 'none';
+  // Could create an iframe here
+}
+
+function closeReelModal(){
+  videoModalBackdrop.classList.remove('open');
+  videoModalPlayer.pause();
+  videoModalPlayer.src = '';
+  videoLoading.classList.add('hidden');
+}
+
+videoModalClose.onclick = closeReelModal;
+videoModalBackdrop.onclick = (e) => {
+  if(e.target === videoModalBackdrop) closeReelModal();
+};
+document.addEventListener('keydown', (e) => {
+  if(e.key === 'Escape' && videoModalBackdrop.classList.contains('open')) closeReelModal();
+});
+
+function render(){
+  listEl.innerHTML = "";
+  
+  // Filter: hide admin reels completely from everyone
+  const displayReels = reels.filter(r => {
+    // Hide if author_name is admin or if title/url contains admin
+    if (r.author_name === 'admin' || 
+        (r.title && r.title.toLowerCase().includes('admin')) ||
+        (r.url && r.url.toLowerCase().includes('admin'))) {
+      return false; // Always hide admin reel
+    }
+    return true;
+  });
+  
+  if(displayReels.length === 0){
+    listEl.innerHTML = '<div class="empty">No reels yet. Tap + to add one.</div>';
+    return;
+  }
+
+  const votedIds = getVotedIds();
+  const sorted = [...displayReels].sort((a,b) => b.upvotes - a.upvotes);
+
+  sorted.forEach(reel => {
+    const hasVoted = votedIds.includes(reel.id);
+
+    const card = document.createElement('div');
+    card.className = 'reel';
+
+    const win = document.createElement('div');
+    win.className = 'reel-window';
+
+    // Show static thumbnail only (no auto-play, click to play)
+    if (reel.thumbnail_url) {
+      const img = document.createElement('img');
+      img.src = reel.thumbnail_url;
+      img.alt = reel.title || '';
+      win.appendChild(img);
+    } else if (reel.video_url) {
+      // Show first frame of video as static thumbnail (no autoplay)
+      const img = document.createElement('img');
+      img.src = reel.video_url;
+      img.alt = reel.title || '';
+      win.appendChild(img);
+    } else {
+      // Fallback placeholder
+      const div = document.createElement('div');
+      div.style.cssText = 'color:var(--muted);font-size:12px;text-align:center;padding:20px;';
+      div.textContent = '📱\nNo preview';
+      win.appendChild(div);
+    }
+
+    const overlay = document.createElement('div');
+    overlay.className = 'play-overlay';
+    overlay.textContent = '▶';
+    win.appendChild(overlay);
+
+    if(isAdmin){
+      const cb = document.createElement('div');
+      cb.className = 'featured-checkbox' + (reel.featured ? ' checked' : '');
+      cb.textContent = reel.featured ? '✓' : '';
+      cb.title = 'Toggle featured';
+      cb.onclick = async (e) => {
+        e.stopPropagation();
+        reel.featured = !reel.featured;
+        try {
+          await updateReelInSupabase(reel);
+          render();
+        } catch(err) {
+          setStatus("Save failed: " + err.message);
+        }
+      };
+      win.appendChild(cb);
+
+      // Delete button
+      const delBtn = document.createElement('div');
+      delBtn.style.cssText = 'position:absolute;bottom:8px;right:8px;z-index:3;width:26px;height:26px;border-radius:50%;background:rgba(255,0,0,0.8);color:white;display:flex;align-items:center;justify-content:center;font-size:14px;cursor:pointer;border:none;';
+      delBtn.textContent = '✕';
+      delBtn.title = 'Delete reel';
+      delBtn.onclick = async (e) => {
+        e.stopPropagation();
+        if(confirm('Delete this reel?')){
+          try {
+            await deleteReelFromSupabase(reel.id);
+            reels = reels.filter(r => r.id !== reel.id);
+            render();
+          } catch(err) {
+            setStatus("Delete failed: " + err.message);
+          }
+        }
+      };
+      win.appendChild(delBtn);
+    } else if(reel.featured){
+      const badge = document.createElement('div');
+      badge.className = 'featured-badge';
+      badge.textContent = '✓';
+      win.appendChild(badge);
+    }
+
+    win.onclick = () => {
+      openReelModal(reel);
+    };
+
+    const footer = document.createElement('div');
+    footer.className = 'reel-footer';
+
+    const link = document.createElement('div');
+    link.className = 'reel-link';
+    link.textContent = reel.title || reel.url;
+
+    const upvote = document.createElement('div');
+    upvote.className = 'upvote' + (hasVoted ? ' voted' : '');
+    upvote.innerHTML = '<span class="arrow">▲</span><span>' + reel.upvotes + '</span>';
+    upvote.onclick = async () => {
+      if(hasVoted) return;
+      reel.upvotes += 1;
+      addVotedId(reel.id);
+      try {
+        await updateReelInSupabase(reel);
+        render();
+      } catch(err) {
+        setStatus("Save failed: " + err.message);
+      }
+    };
+
+    footer.appendChild(link);
+    footer.appendChild(upvote);
+    card.appendChild(win);
+    card.appendChild(footer);
+    listEl.appendChild(card);
+  });
+}
+
+function openModal(){
+  modalBackdrop.classList.add('open');
+  urlInput.value = "";
+  urlError.textContent = "";
+  urlInput.focus();
+}
+function closeModal(){
+  modalBackdrop.classList.remove('open');
+}
+
+fabBtn.onclick = openModal;
+cancelBtn.onclick = closeModal;
+modalBackdrop.onclick = (e) => { if(e.target === modalBackdrop) closeModal(); };
+
+function openAdminModal(){
+  document.getElementById('adminModalTitle').textContent = isAdmin ? "Log out of admin?" : "Enter admin code";
+  adminCodeInput.value = "";
+  adminSubmitBtn.textContent = isAdmin ? "Log out" : "Confirm";
+  adminCodeInput.style.display = isAdmin ? "none" : "block";
+  adminModalBackdrop.classList.add('open');
+  if(!isAdmin) adminCodeInput.focus();
+}
+function closeAdminModal(){
+  adminModalBackdrop.classList.remove('open');
+}
+
+adminBtn.onclick = openAdminModal;
+adminCancelBtn.onclick = closeAdminModal;
+adminModalBackdrop.onclick = (e) => { if(e.target === adminModalBackdrop) closeAdminModal(); };
+
+adminSubmitBtn.onclick = () => {
+  if(isAdmin){
+    isAdmin = false;
+    adminBtn.classList.remove('active');
+    adminBtn.textContent = '🔒';
+    closeAdminModal();
+    render();
+    return;
+  }
+  const entered = adminCodeInput.value.trim();
+  if(!adminCode){
+    setStatus("No admin code is set. Add an 'admin_code' field to your Supabase reels table.");
+    closeAdminModal();
+    return;
+  }
+  if(entered === adminCode){
+    isAdmin = true;
+    adminBtn.classList.add('active');
+    adminBtn.textContent = '🔓';
+    closeAdminModal();
+    render();
+  } else {
+    setStatus("Incorrect code.");
+  }
+};
+
+adminCodeInput.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') adminSubmitBtn.click();
+});
+
+addBtn.onclick = async () => {
+  const raw = urlInput.value;
+  const permalink = extractPermalink(raw);
+  if(!permalink || !permalink.includes('instagram.com')){
+    urlError.textContent = "That doesn't look like a valid Instagram link.";
+    return;
+  }
+  urlError.textContent = "";
+
+  addBtn.disabled = true;
+  setStatus("Processing video...");
+
+  try {
+    // First, try to get video from backend
+    const videoData = await downloadFromBackend(permalink);
+
+    // Generate unique ID
+    const reelId = Date.now().toString(36);
+
+    // Create reel record
+    const newReel = {
+      id: reelId,
+      url: permalink,
+      upvotes: 0,
+      featured: false,
+      video_url: videoData.video_url || null,
+      thumbnail_url: videoData.thumbnail_url || null,
+      title: videoData.title || null,
+      author_name: videoData.author_name || null
+    };
+
+    // Save to Supabase
+    await saveReelToSupabase(newReel);
+
+    // Add to local array
+    reels.unshift(newReel);
+    render();
+    closeModal();
+    setStatus(videoData.video_url ? "Reel added with video! ✅" : "Reel added (embed only) ⚠️");
+
+  } catch(err) {
+    setStatus("Error: " + err.message);
+    urlError.textContent = err.message;
+  }
+
+  addBtn.disabled = false;
+};
+
+urlInput.addEventListener('keydown', (e) => {
+  if(e.key === 'Enter') addBtn.click();
+});
+
+// ============================================================
+// INITIALIZE
+// ============================================================
+function initSupabase(){
+  try {
+    if (typeof window.supabase === 'undefined') {
+      setStatus("Supabase library not loaded.");
+      return;
+    }
+    const { createClient } = window.supabase;
+    sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    loadReelsFromSupabase();
+  } catch(err) {
+    console.error('Supabase init error:', err);
+    setStatus("Supabase initialization failed: " + err.message);
+  }
+}
+
+// Check if library is already loaded (shouldn't happen, but just in case)
+if (typeof window.supabase !== 'undefined') {
+  setTimeout(() => initSupabase(), 100);
+} else {
+  const script = document.createElement('script');
+  script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+  script.onload = () => {
+    setTimeout(() => initSupabase(), 100);
+  };
+  script.onerror = () => setStatus("Couldn't load Supabase library (check network).");
+  document.head.appendChild(script);
+}
+</script>
+</body>
+</html>
