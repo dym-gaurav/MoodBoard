@@ -490,19 +490,26 @@ async function loadReelsFromSupabase(){
 
   setStatus("Loading reels...");
   try{
-    const { data, error } = await sb
+    // Load reels
+    const { data: reelsData, error: reelsError } = await sb
       .from('reels')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if(error) throw error;
+    if(reelsError) throw reelsError;
+    reels = reelsData || [];
 
-    reels = data || [];
-    // Get admin code from first reel that has it set
-    const adminRecord = reels.find(r => r.admin_code);
-    if (adminRecord) {
-      adminCode = adminRecord.admin_code;
+    // Load admin code from admin_config table
+    const { data: adminData, error: adminError } = await sb
+      .from('admin_config')
+      .select('admin_code')
+      .eq('id', 1)
+      .single();
+
+    if(!adminError && adminData) {
+      adminCode = adminData.admin_code;
     }
+
     render();
     setStatus("");
   }catch(err){
@@ -811,7 +818,7 @@ adminSubmitBtn.onclick = () => {
   }
   const entered = adminCodeInput.value.trim();
   if(!adminCode){
-    setStatus("No admin code is set. Add an 'admin_code' field to your Supabase reels table.");
+    setStatus("No admin code is set in admin_config table.");
     closeAdminModal();
     return;
   }
@@ -821,8 +828,10 @@ adminSubmitBtn.onclick = () => {
     adminBtn.textContent = '🔓';
     closeAdminModal();
     render();
+    setStatus("Admin mode activated ✓");
   } else {
     setStatus("Incorrect code.");
+    adminCodeInput.value = "";
   }
 };
 
@@ -912,6 +921,14 @@ if (typeof window.supabase !== 'undefined') {
   script.onerror = () => setStatus("Couldn't load Supabase library (check network).");
   document.head.appendChild(script);
 }
+document.addEventListener("contextmenu", e => e.preventDefault());
+
+document.addEventListener("keydown", e => {
+    if (e.key === "F12") e.preventDefault();
+    if (e.ctrlKey && e.shiftKey && e.key === "I") e.preventDefault();
+    if (e.ctrlKey && e.shiftKey && e.key === "J") e.preventDefault();
+    if (e.ctrlKey && e.key === "U") e.preventDefault();
+});
 </script>
 </body>
 </html>
